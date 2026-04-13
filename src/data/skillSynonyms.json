@@ -1,0 +1,10 @@
+{
+  "js": "javascript",
+  "ts": "typescript",
+  "node": "node.js",
+  "nodejs": "node.js",
+  "postgres": "postgresql",
+  "k8s": "kubernetes",
+  "rest": "rest api",
+  "springboot": "spring boot"
+}

@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Resume Parser and Job Matcher</title>
+  <style>
+    :root {
+      --bg: #f5efe5;
+      --paper: rgba(255, 251, 245, 0.84);
+      --paper-strong: #fffdfa;
+      --text: #1f2937;
+      --muted: #667085;
+      --line: rgba(96, 78, 49, 0.15);
+      --brand: #0f766e;
+      --brand-dark: #115e59;
+      --warm: #c2410c;
+      --gold: #d6a94f;
+      --ok-bg: #ecfdf3;
+      --ok-text: #027a48;
+      --err-bg: #fef3f2;
+      --err-text: #b42318;
+      --shadow: 0 24px 60px rgba(27, 31, 36, 0.12);
+      --soft-shadow: 0 14px 30px rgba(33, 35, 38, 0.08);
+      --radius: 26px;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(15, 118, 110, 0.18), transparent 28%),
+        radial-gradient(circle at top right, rgba(214, 169, 79, 0.2), transparent 22%),
+        radial-gradient(circle at bottom left, rgba(194, 65, 12, 0.12), transparent 25%),
+        linear-gradient(180deg, black 0%, blue 100%);
+    }
+
+    .shell {
+      width: min(1160px, calc(100% - 24px));
+      margin: 24px auto 36px;
+    }
+
+    .frame {
+      border: 1px solid rgba(255, 255, 255, 0.55);
+      border-radius: 34px;
+      overflow: hidden;
+      background: rgba(255, 250, 244, 0.72);
+      backdrop-filter: blur(16px);
+      box-shadow: var(--shadow);
+    }
+
+    .hero {
+      padding: 32px;
+      border-bottom: 1px solid var(--line);
+      background:
+        linear-gradient(135deg, rgba(15, 118, 110, 0.12), rgba(255, 255, 255, 0) 42%),
+        linear-gradient(145deg, rgba(214, 169, 79, 0.14), rgba(255, 255, 255, 0) 56%);
+    }
+
+    .hero-grid,
+    .upload-grid,
+    .summary-grid,
+    .job-skills {
+      display: grid;
+      gap: 18px;
+    }
+
+    .hero-grid {
+      grid-template-columns: minmax(0, 1.4fr) minmax(280px, .95fr);
+      align-items: end;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border: 1px solid rgba(15, 118, 110, 0.18);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.7);
+      color: var(--brand-dark);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .eyebrow::before {
+      content: "";
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--brand), var(--gold));
+    }
+
+    h1 {
+      margin: 16px 0 12px;
+      max-width: 10ch;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(2.5rem, 5vw, 4.4rem);
+      line-height: .98;
+      letter-spacing: -.04em;
+    }
+
+    p { margin: 0; color: var(--muted); line-height: 1.65; }
+
+    .hero-notes,
+    .panel,
+    .tile {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(255, 255, 255, 0.72);
+      box-shadow: var(--soft-shadow);
+    }
+
+    .hero-notes { padding: 20px; }
+    .hero-notes strong { display: block; margin-bottom: 8px; }
+    .hero-notes ul { margin: 0; padding-left: 18px; color: var(--muted); line-height: 1.8; }
+
+    .content { padding: 28px 32px 32px; display: grid; gap: 24px; }
+    .upload-grid { grid-template-columns: minmax(0, 1fr) 300px; }
+    .panel { padding: 22px; }
+    .section-head { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+    .section-head h2, .panel h3 { margin: 0 0 6px; letter-spacing: -.03em; }
+
+    .tag {
+      align-self: start;
+      padding: 8px 11px;
+      border-radius: 999px;
+      background: rgba(15, 118, 110, 0.1);
+      color: var(--brand-dark);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    form, .field { display: grid; gap: 10px; }
+    .field-top, .job-top, .match-head { display: flex; justify-content: space-between; gap: 14px; align-items: start; }
+    label { font-weight: 800; }
+    .hint { color: var(--muted); font-size: .84rem; }
+
+    .dropzone {
+      position: relative;
+      display: grid;
+      gap: 10px;
+      padding: 18px;
+      border: 1px dashed rgba(15, 118, 110, 0.32);
+      border-radius: 20px;
+      background: linear-gradient(180deg, rgba(255,255,255,.82), rgba(249,245,236,.9));
+      transition: .18s ease;
+    }
+
+    .dropzone:hover, .dropzone:focus-within {
+      transform: translateY(-2px);
+      border-color: rgba(15, 118, 110, 0.48);
+      box-shadow: 0 14px 24px rgba(15, 118, 110, 0.08);
+    }
+
+    .dropzone input {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+    }
+
+    .icon {
+      width: 46px;
+      height: 46px;
+      display: grid;
+      place-items: center;
+      border-radius: 15px;
+      background: linear-gradient(135deg, rgba(15,118,110,.13), rgba(214,169,79,.18));
+      color: var(--brand-dark);
+      font-weight: 800;
+    }
+
+    .dropzone strong { display: block; margin-bottom: 4px; }
+    .file-meta, .chips, .meta-row { display: flex; flex-wrap: wrap; gap: 8px; }
+    .pill, .chip, .meta {
+      display: inline-flex;
+      align-items: center;
+      padding: 8px 12px;
+      border-radius: 999px;
+      font-size: .83rem;
+      font-weight: 700;
+    }
+
+    .pill, .chip.neutral { background: rgba(15, 118, 110, 0.08); color: var(--brand-dark); }
+    .chip.ok { background: rgba(2, 122, 72, 0.1); color: var(--ok-text); }
+    .chip.warn { background: rgba(194, 65, 12, 0.1); color: var(--warm); }
+    .meta { background: rgba(17, 24, 39, 0.06); color: var(--text); }
+
+    button {
+      width: fit-content;
+      border: 0;
+      border-radius: 999px;
+      padding: 15px 22px;
+      background: linear-gradient(135deg, var(--brand), var(--warm));
+      color: #fff;
+      font: inherit;
+      font-weight: 800;
+      cursor: pointer;
+      box-shadow: 0 14px 24px rgba(15, 118, 110, 0.2);
+    }
+
+    button:disabled { opacity: .72; cursor: progress; }
+
+    .status {
+      min-height: 46px;
+      display: flex;
+      align-items: center;
+      padding: 12px 14px;
+      border-radius: 16px;
+      border: 1px solid transparent;
+      font-weight: 700;
+    }
+
+    .status.idle { padding: 0; min-height: 20px; }
+    .status.loading { color: var(--brand-dark); background: rgba(15,118,110,.08); border-color: rgba(15,118,110,.12); }
+    .status.success { color: var(--ok-text); background: var(--ok-bg); border-color: rgba(2,122,72,.14); }
+    .status.error { color: var(--err-text); background: var(--err-bg); border-color: rgba(180,35,24,.14); }
+
+    .side-list { display: grid; gap: 14px; }
+    .tile { padding: 16px; }
+    .tile h3 { margin: 0 0 8px; font-size: 1rem; }
+    .tile ul { margin: 0; padding-left: 18px; color: var(--muted); line-height: 1.7; }
+
+    .empty {
+      padding: 32px 22px;
+      text-align: center;
+      border: 1px dashed rgba(15,118,110,.24);
+      border-radius: var(--radius);
+      background: rgba(255,255,255,.56);
+    }
+
+    .summary-grid { grid-template-columns: minmax(0, 1.05fr) minmax(0, 1.35fr); }
+    .profile, .top-match, .job-card, .json-card { padding: 22px; }
+    .name-row { display: flex; gap: 14px; align-items: center; }
+
+    .avatar {
+      width: 56px;
+      height: 56px;
+      display: grid;
+      place-items: center;
+      border-radius: 18px;
+      background: linear-gradient(135deg, var(--brand), var(--warm));
+      color: #fff;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 1.3rem;
+      font-weight: 700;
+    }
+
+    .stats, .top-stats { display: grid; gap: 12px; }
+    .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .top-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 18px 0; }
+
+    .statbox {
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: rgba(255,255,255,.72);
+    }
+
+    .label {
+      display: block;
+      margin-bottom: 7px;
+      color: var(--muted);
+      font-size: .8rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+
+    .value { font-size: 1.15rem; font-weight: 800; letter-spacing: -.03em; }
+
+    .top-match {
+      background:
+        linear-gradient(145deg, rgba(15,118,110,.1), rgba(255,255,255,.78) 48%),
+        var(--paper);
+    }
+
+    .score-ring {
+      min-width: 104px;
+      min-height: 104px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      background:
+        radial-gradient(circle, rgba(255,255,255,.93) 0 52%, transparent 53%),
+        conic-gradient(var(--brand) calc(var(--score) * 1%), rgba(15,118,110,.12) 0);
+      box-shadow: inset 0 0 0 8px rgba(255,255,255,.55);
+    }
+
+    .score-ring strong { display: block; font-size: 1.7rem; letter-spacing: -.04em; }
+    .score-ring span, .subtle { font-size: .85rem; color: var(--muted); }
+    .job-list { display: grid; gap: 16px; }
+    .job-card { display: grid; gap: 16px; }
+
+    .score-box {
+      min-width: 86px;
+      padding: 12px 14px;
+      text-align: center;
+      border-radius: 20px;
+      background: linear-gradient(135deg, rgba(15,118,110,.1), rgba(214,169,79,.14));
+      border: 1px solid rgba(15,118,110,.12);
+    }
+
+    .score-box strong { display: block; font-size: 1.4rem; }
+    .job-copy { color: var(--muted); }
+    .job-skills { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+    .json-card details {
+      overflow: hidden;
+      border: 1px solid rgba(17,24,39,.12);
+      border-radius: 16px;
+      background: rgba(255,255,255,.74);
+    }
+
+    .json-card summary {
+      padding: 14px 16px;
+      cursor: pointer;
+      font-weight: 800;
+      list-style: none;
+    }
+
+    .json-card summary::-webkit-details-marker { display: none; }
+    pre {
+      margin: 0;
+      padding: 0 16px 16px;
+      overflow: auto;
+      background: #142129;
+      color: #d6e9e5;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    @media (max-width: 940px) {
+      .hero-grid, .upload-grid, .summary-grid { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 760px) {
+      .shell { width: calc(100% - 16px); margin-top: 10px; }
+      .frame { border-radius: 24px; }
+      .hero, .content, .panel, .profile, .top-match, .job-card, .json-card { padding-left: 18px; padding-right: 18px; }
+      .field-top, .job-top, .match-head { flex-direction: column; }
+      .stats, .top-stats, .job-skills { grid-template-columns: 1fr; }
+      h1 { max-width: none; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="frame">
+      <header class="hero">
+        <div class="hero-grid">
+          <div>
+            <span class="eyebrow">Smart Screening Workspace</span>
+            <h1>Smart Resume Analysis for Better Job Matching</h1>
+            <p>Analyze your resume against different job roles to find the most suitable match and understand your skill gaps..</p>
+          </div>
+          <aside class="hero-notes">
+            <strong>What changed in this redesign</strong>
+            <ul>
+              <li>Cleaner upload flow with live file feedback</li>
+              <li>Top match highlight instead of raw JSON first</li>
+              <li>Readable cards for matched and missing skills</li>
+            </ul>
+          </aside>
+        </div>
+      </header>
+
+      <section class="content">
+        <div class="upload-grid">
+          <section class="panel">
+            <div class="section-head">
+              <div>
+                <h2>Run a Match</h2>
+                <p>Same backend logic, but a more premium and easier-to-use interface.</p>
+              </div>
+              <span class="tag">Polished UI</span>
+            </div>
+
+            <form id="matcher-form">
+              <div class="field">
+                <div class="field-top">
+                  <label for="resume">Resume file</label>
+                  <span class="hint">Single PDF or TXT</span>
+                </div>
+                <div class="dropzone">
+                  <input id="resume" name="resume" type="file" accept=".txt,.pdf" required>
+                  <div class="icon">R</div>
+                  <div>
+                    <strong>Choose your resume</strong>
+                    <p>Upload a text-rich resume with skills and experience clearly mentioned.</p>
+                  </div>
+                  <div id="resume-meta" class="file-meta"></div>
+                </div>
+              </div>
+
+              <div class="field">
+                <div class="field-top">
+                  <label for="jobs">Job descriptions</label>
+                  <span class="hint">Multiple supported</span>
+                </div>
+                <div class="dropzone">
+                  <input id="jobs" name="jobs" type="file" accept=".txt,.pdf" multiple required>
+                  <div class="icon">J</div>
+                  <div>
+                    <strong>Add one or more JD files</strong>
+                    <p>Compare several roles together and identify the strongest fit quickly.</p>
+                  </div>
+                  <div id="jobs-meta" class="file-meta"></div>
+                </div>
+              </div>
+
+              <button id="submit-btn" type="submit">Resume Fit Analyzer Dashboard</button>
+              <div id="status" class="status idle"></div>
+            </form>
+          </section>
+
+          <aside class="side-list">
+            <section class="tile">
+              <h3>Best for demo</h3>
+              <p>Use one resume with multiple JDs so the ranking view becomes more meaningful.</p>
+            </section>
+            <section class="tile">
+              <h3>Output includes</h3>
+              <ul>
+                <li>Resume summary</li>
+                <li>Top recommended role</li>
+                <li>Skill match breakdown</li>
+                <li>Expandable JSON response</li>
+              </ul>
+            </section>
+          </aside>
+        </div>
+
+        <section id="results">
+          <div class="empty panel">
+            <h2>Your results dashboard will appear here</h2>
+            <p>This space now turns the matcher response into a cleaner ranking and skill analysis view.</p>
+          </div>
+        </section>
+      </section>
+    </section>
+  </main>
+
+  <script>
+    const form = document.getElementById("matcher-form");
+    const resumeInput = document.getElementById("resume");
+    const jobsInput = document.getElementById("jobs");
+    const resumeMeta = document.getElementById("resume-meta");
+    const jobsMeta = document.getElementById("jobs-meta");
+    const statusEl = document.getElementById("status");
+    const resultsEl = document.getElementById("results");
+    const submitBtn = document.getElementById("submit-btn");
+
+    function escapeHtml(value) {
+      return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    function initials(name) {
+      const words = String(name || "Candidate").trim().split(/\s+/).filter(Boolean).slice(0, 2);
+      return words.length ? words.map((word) => word[0].toUpperCase()).join("") : "C";
+    }
+
+    function chips(items, variant, emptyLabel) {
+      if (!Array.isArray(items) || !items.length) {
+        return `<span class="chip ${variant === "ok" ? "neutral" : "warn"}">${escapeHtml(emptyLabel)}</span>`;
+      }
+      return items.map((item) => `<span class="chip ${variant}">${escapeHtml(item)}</span>`).join("");
+    }
+
+    function neutralChips(items) {
+      if (!Array.isArray(items) || !items.length) {
+        return '<span class="chip neutral">Not available</span>';
+      }
+      return items.map((item) => `<span class="chip neutral">${escapeHtml(item)}</span>`).join("");
+    }
+
+    function setStatus(message, type) {
+      statusEl.textContent = message || "";
+      statusEl.className = "status";
+      statusEl.classList.add(type || "idle");
+      if (!message) {
+        statusEl.classList.add("idle");
+      }
+    }
+
+    function updateMeta(input, container, emptyText, groupLabel) {
+      const files = Array.from(input.files || []);
+      if (!files.length) {
+        container.innerHTML = `<span class="pill">${escapeHtml(emptyText)}</span>`;
+        return;
+      }
+      if (files.length === 1) {
+        container.innerHTML = `<span class="pill">${escapeHtml(files[0].name)}</span>`;
+        return;
+      }
+      const shown = files.slice(0, 2).map((file) => `<span class="pill">${escapeHtml(file.name)}</span>`).join("");
+      const extra = files.length > 2 ? `<span class="pill">${files.length - 2} more ${escapeHtml(groupLabel)}</span>` : "";
+      container.innerHTML = shown + extra;
+    }
+
+    function renderEmpty(title, copy) {
+      resultsEl.innerHTML = `
+        <div class="empty panel">
+          <h2>${escapeHtml(title)}</h2>
+          <p>${escapeHtml(copy)}</p>
+        </div>
+      `;
+    }
+
+    function renderResults(data) {
+      const jobs = Array.isArray(data.matchingJobs) ? [...data.matchingJobs] : [];
+      jobs.sort((a, b) => (b.matchingScore || 0) - (a.matchingScore || 0));
+
+      if (!jobs.length) {
+        renderEmpty("No matching jobs were returned", "The backend response did not contain any ranked jobs.");
+        return;
+      }
+
+      const top = jobs[0];
+      const topMatched = (top.skillsAnalysis || []).filter((item) => item.presentInResume).map((item) => item.skill);
+      const topMissing = (top.skillsAnalysis || []).filter((item) => !item.presentInResume).map((item) => item.skill);
+
+      const jobCards = jobs.map((job, index) => {
+        const matched = (job.skillsAnalysis || []).filter((item) => item.presentInResume).map((item) => item.skill);
+        const missing = (job.skillsAnalysis || []).filter((item) => !item.presentInResume).map((item) => item.skill);
+        return `
+          <article class="panel job-card">
+            <div class="job-top">
+              <div>
+                <h3>${index + 1}. ${escapeHtml(job.role || "Untitled Role")}</h3>
+                <div class="meta-row">
+                  <span class="meta">${escapeHtml(job.jobId || `JD${index + 1}`)}</span>
+                  <span class="meta">${escapeHtml(job.salary || "Salary not specified")}</span>
+                  <span class="meta">${escapeHtml(job.yearOfExperience || "Experience not specified")} yrs</span>
+                </div>
+              </div>
+              <div class="score-box">
+                <strong>${escapeHtml(job.matchingScore || 0)}%</strong>
+                <span class="subtle">Match Score</span>
+              </div>
+            </div>
+            <p class="job-copy">${escapeHtml(job.aboutRole || "Role description not available.")}</p>
+            <div class="job-skills">
+              <div class="statbox">
+                <span class="label">Matched Skills</span>
+                <div class="chips">${chips(matched, "ok", "No matched skills")}</div>
+              </div>
+              <div class="statbox">
+                <span class="label">Missing Skills</span>
+                <div class="chips">${chips(missing, "warn", "No major missing skills")}</div>
+              </div>
+            </div>
+          </article>
+        `;
+      }).join("");
+
+      resultsEl.innerHTML = `
+        <div class="summary-grid">
+          <section class="panel profile">
+            <div class="name-row">
+              <div class="avatar">${escapeHtml(initials(data.name))}</div>
+              <div>
+                <h3>${escapeHtml(data.name || "Candidate Profile")}</h3>
+                <p>Resume summary extracted from your uploaded file.</p>
+              </div>
+            </div>
+            <div class="stats" style="margin:18px 0;">
+              <div class="statbox">
+                <span class="label">Expected Salary</span>
+                <span class="value">${escapeHtml(data.salary || "Not found")}</span>
+              </div>
+              <div class="statbox">
+                <span class="label">Experience</span>
+                <span class="value">${escapeHtml(data.yearOfExperience || "Not found")} years</span>
+              </div>
+            </div>
+            <h3>Resume Skills</h3>
+            <p class="subtle" style="margin:6px 0 12px;">Core skills detected from the resume.</p>
+            <div class="chips">${neutralChips(data.resumeSkills)}</div>
+          </section>
+
+          <section class="panel top-match">
+            <div class="match-head">
+              <div>
+                <h3>Top Recommended Match</h3>
+                <p>${escapeHtml(top.role || "Untitled Role")} currently ranks highest using the existing rule-based scoring logic.</p>
+              </div>
+              <div class="score-ring" style="--score:${Math.max(0, Math.min(100, Number(top.matchingScore) || 0))}">
+                <div>
+                  <strong>${escapeHtml(top.matchingScore || 0)}%</strong>
+                  <span>Best Fit</span>
+                </div>
+              </div>
+            </div>
+            <div class="top-stats">
+              <div class="statbox">
+                <span class="label">Role ID</span>
+                <span class="value">${escapeHtml(top.jobId || "N/A")}</span>
+              </div>
+              <div class="statbox">
+                <span class="label">Salary</span>
+                <span class="value">${escapeHtml(top.salary || "Not specified")}</span>
+              </div>
+              <div class="statbox">
+                <span class="label">Experience</span>
+                <span class="value">${escapeHtml(top.yearOfExperience || "Not specified")} yrs</span>
+              </div>
+            </div>
+            <div class="job-skills">
+              <div class="statbox">
+                <span class="label">Matched In Top Role</span>
+                <div class="chips">${chips(topMatched, "ok", "No matched skills")}</div>
+              </div>
+              <div class="statbox">
+                <span class="label">Missing In Top Role</span>
+                <div class="chips">${chips(topMissing, "warn", "No critical gaps")}</div>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <section class="job-list" style="margin-top:18px;">
+          ${jobCards}
+        </section>
+
+        <section class="panel json-card" style="margin-top:18px;">
+          <h3>Raw JSON Output</h3>
+          <p class="subtle" style="margin:6px 0 12px;">The original matcher response is still available for debugging or verification.</p>
+          <details>
+            <summary>View full response</summary>
+            <pre>${escapeHtml(JSON.stringify(data, null, 2))}</pre>
+          </details>
+        </section>
+      `;
+    }
+
+    resumeInput.addEventListener("change", () => updateMeta(resumeInput, resumeMeta, "No resume selected", "files"));
+    jobsInput.addEventListener("change", () => updateMeta(jobsInput, jobsMeta, "No JD files selected", "JD files"));
+    updateMeta(resumeInput, resumeMeta, "No resume selected", "files");
+    updateMeta(jobsInput, jobsMeta, "No JD files selected", "JD files");
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      if (!resumeInput.files.length || !jobsInput.files.length) {
+        setStatus("Resume and at least one JD file are required before analysis.", "error");
+        renderEmpty("Files are required", "Please select both a resume and at least one job description file.");
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append("resume", resumeInput.files[0]);
+      for (const file of jobsInput.files) {
+        formData.append("jobs", file);
+      }
+
+      setStatus("Processing files and building your dashboard...", "loading");
+      submitBtn.disabled = true;
+      renderEmpty("Analyzing your files", "The parser is extracting details, scoring each JD, and preparing the visual dashboard.");
+
+      try {
+        const response = await fetch("/api/match", { method: "POST", body: formData });
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.error || "Request failed.");
+        }
+        setStatus("Analysis completed successfully.", "success");
+        renderResults(data);
+      } catch (error) {
+        setStatus("Request failed. Please check your files and try again.", "error");
+        renderEmpty(error.message || "Something went wrong", "The request could not be completed with the selected files.");
+      } finally {
+        submitBtn.disabled = false;
+      }
+    });
+   
+  </script>
+</body>
+</html>

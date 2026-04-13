@@ -1,0 +1,20 @@
+Backend Developer
+Responsible for backend development and API delivery for internal systems.
+
+Required Skills:
+Java
+Spring Boot
+Kafka
+MySQL
+python
+nodejs
+ExpressJs
+Reactjs
+
+Optional Skills:
+Docker
+AWS
+
+
+Experience: 4-5 years of experience
+Salary: 12 LPA

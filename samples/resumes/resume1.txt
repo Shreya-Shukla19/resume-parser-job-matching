@@ -1,0 +1,19 @@
+John Doe
+Email: john@example.com
+Phone: 9999999999
+
+Summary
+Backend developer with 4.5 years of experience building APIs and web applications.
+
+Skills
+Java
+Spring Boot
+MySQL
+Docker
+Git
+
+Experience
+Software Engineer
+Jan 2021 - Present
+
+Current CTC: 12 LPA

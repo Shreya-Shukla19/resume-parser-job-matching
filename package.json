@@ -1,0 +1,27 @@
+{
+  "name": "resume-fit-analyzer",
+  "version": "1.0.0",
+  "description": "Basic rule-based resume parsing and job matching system",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "cli": "node src/index.js",
+    "sample": "node src/index.js samples/resumes/resume1.txt samples/jds/jd1.txt"
+    
+  },
+  "keywords": [
+    "resume-parser",
+    "job-matching",
+    "rule-based"
+  ],
+  "author": "Shreya Shukla",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "multer": "^2.0.2",
+    "pdf-parse": "^1.1.1"
+  }
+}
