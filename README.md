@@ -306,7 +306,7 @@ node src/index.js "resume.pdf" "jd.pdf"
 If file path has spaces, always use quotes:
 
 ```bash
-node src/index.js "C:\Users\shrey\Downloads\My Resume.pdf" "C:\Users\shrey\Downloads\My JD.pdf"
+node src/index.js "C:\Users\shrey\My Resume.pdf" "C:\Users\shrey\My JD.pdf"
 ```
 
 ## Notes
@@ -315,6 +315,10 @@ node src/index.js "C:\Users\shrey\Downloads\My Resume.pdf" "C:\Users\shrey\Downl
 - It is not meant to be a production-level parser
 - Extraction depends on text available inside the PDF or text file
 - Some resumes may give partial extraction because resume formats are different
+
+## Live Demo
+
+ - https://resume-parser-job-matching-1mwy.onrender.com
 
 ## Author
 
